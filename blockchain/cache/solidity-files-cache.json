@@ -1,0 +1,41 @@
+{
+  "_format": "hh-sol-cache-2",
+  "files": {
+    "C:\\Users\\dhruv\\OneDrive\\Desktop\\secure-vote\\blockchain\\contracts\\SecureVote.sol": {
+      "lastModificationDate": 1782801735768,
+      "contentHash": "4b8780335aa448e6ce6ab853bb10c0c5",
+      "sourceName": "contracts/SecureVote.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "SecureVote"
+      ]
+    }
+  }
+}

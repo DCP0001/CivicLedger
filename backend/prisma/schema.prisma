@@ -1,0 +1,65 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String    @id @default(uuid())
+  name          String
+  email         String    @unique
+  passwordHash  String?   // Nullable for voters who log in using wallet only
+  walletAddress String    @unique
+  role          String    // "admin" or "voter"
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  auditLogs     AuditLog[]
+}
+
+model Election {
+  id             Int       @id // Manually matched to the smart contract electionId
+  title          String
+  description    String
+  startDate      DateTime
+  endDate        DateTime
+  status         String    // "draft", "active", "ended", "archived"
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  candidates     Candidate[]
+  votes          VoteReference[]
+}
+
+model Candidate {
+  id          Int      // Manually matched to the smart contract candidateId
+  electionId  Int
+  name        String
+  party       String
+  imageUrl    String
+  description String
+  election    Election @relation(fields: [electionId], references: [id], onDelete: Cascade)
+
+  @@id([electionId, id])
+}
+
+model VoteReference {
+  id              String   @id @default(uuid())
+  electionId      Int
+  walletAddress   String
+  transactionHash String   @unique
+  timestamp       DateTime @default(now())
+  election        Election @relation(fields: [electionId], references: [id], onDelete: Cascade)
+
+  @@unique([electionId, walletAddress]) // Enforce off-chain registration check
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String
+  action    String
+  details   String
+  timestamp DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
