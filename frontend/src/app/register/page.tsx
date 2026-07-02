@@ -269,13 +269,21 @@ export default function VoterRegister() {
                   </div>
                 </div>
 
-                <Link
-                  href="/"
-                  className="btn-premium w-full flex items-center justify-center gap-2 text-xs font-bold py-3 rounded-xl shadow-xs"
-                >
-                  Return to Dashboard
-                  <ChevronRight className="h-4 w-4" />
-                </Link>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Link
+                    href="/login"
+                    className="btn-premium flex-1 flex items-center justify-center gap-2 text-xs font-bold py-3 rounded-xl shadow-xs"
+                  >
+                    Login to Check Status
+                    <ChevronRight className="h-4 w-4" />
+                  </Link>
+                  <Link
+                    href="/"
+                    className="btn-premium-outline flex-1 flex items-center justify-center gap-2 text-xs font-bold py-3 rounded-xl"
+                  >
+                    Return Home
+                  </Link>
+                </div>
               </div>
             ) : (
               <form onSubmit={handleSelfRegister} className="space-y-4">
