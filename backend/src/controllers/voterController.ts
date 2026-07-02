@@ -26,8 +26,8 @@ export const registerVoter = async (req: AuthenticatedRequest, res: Response) =>
 
     if (existing) {
       return res.status(400).json({
-        error: existing.email === normalizedEmail 
-          ? 'Email already registered' 
+        error: existing.email === normalizedEmail
+          ? 'Email already registered'
           : 'Wallet address already registered',
       });
     }
@@ -38,6 +38,7 @@ export const registerVoter = async (req: AuthenticatedRequest, res: Response) =>
         email: normalizedEmail,
         walletAddress: normalizedWallet,
         role: 'voter',
+        verificationStatus: 'pending',
       },
     });
 
@@ -57,7 +58,7 @@ export const registerVoter = async (req: AuthenticatedRequest, res: Response) =>
   }
 };
 
-// Check voter registration status
+// Check voter registration status (public)
 export const checkVoterRegistration = async (req: Request, res: Response) => {
   try {
     const { walletAddress } = req.params;
@@ -84,6 +85,10 @@ export const checkVoterRegistration = async (req: Request, res: Response) => {
         email: user.email,
         walletAddress: user.walletAddress,
         role: user.role,
+        verificationStatus: user.verificationStatus,
+        verificationNotes: user.verificationNotes,
+        verifiedAt: user.verifiedAt,
+        createdAt: user.createdAt,
       },
     });
   } catch (error) {
@@ -92,7 +97,7 @@ export const checkVoterRegistration = async (req: Request, res: Response) => {
   }
 };
 
-// Get registered voters list (Admin only)
+// Get all registered voters list (Admin only)
 export const getVoters = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const voters = await prisma.user.findMany({
@@ -103,6 +108,65 @@ export const getVoters = async (req: AuthenticatedRequest, res: Response) => {
   } catch (error) {
     console.error('Get voters list error:', error);
     res.status(500).json({ error: 'Failed to retrieve voters' });
+  }
+};
+
+// Get pending voters (Admin only)
+export const getPendingVoters = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const voters = await prisma.user.findMany({
+      where: { role: 'voter', verificationStatus: 'pending' },
+      orderBy: { createdAt: 'asc' },
+    });
+    res.json(voters);
+  } catch (error) {
+    console.error('Get pending voters error:', error);
+    res.status(500).json({ error: 'Failed to retrieve pending voters' });
+  }
+};
+
+// Verify (approve or reject) a voter (Admin only)
+export const verifyVoter = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { status, notes } = req.body;
+
+    if (!status || !['verified', 'rejected'].includes(status)) {
+      return res.status(400).json({ error: 'Status must be "verified" or "rejected"' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id } });
+
+    if (!user) {
+      return res.status(404).json({ error: 'Voter not found' });
+    }
+
+    if (user.role === 'admin') {
+      return res.status(400).json({ error: 'Cannot verify an administrator account' });
+    }
+
+    const updated = await prisma.user.update({
+      where: { id },
+      data: {
+        verificationStatus: status,
+        verificationNotes: notes || null,
+        verifiedAt: new Date(),
+      },
+    });
+
+    // Audit log
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user!.id,
+        action: status === 'verified' ? 'VERIFY_VOTER_APPROVED' : 'VERIFY_VOTER_REJECTED',
+        details: `Voter "${user.name}" (${user.walletAddress}) ${status === 'verified' ? 'approved' : 'rejected'}. Notes: ${notes || 'None'}`,
+      },
+    });
+
+    res.json(updated);
+  } catch (error) {
+    console.error('Verify voter error:', error);
+    res.status(500).json({ error: 'Failed to verify voter' });
   }
 };
 
@@ -130,8 +194,8 @@ export const registerVoterPublic = async (req: Request, res: Response) => {
 
     if (existing) {
       return res.status(400).json({
-        error: existing.email === normalizedEmail 
-          ? 'Email already registered' 
+        error: existing.email === normalizedEmail
+          ? 'Email already registered'
           : 'Wallet address already registered',
       });
     }
@@ -142,6 +206,7 @@ export const registerVoterPublic = async (req: Request, res: Response) => {
         email: normalizedEmail,
         walletAddress: normalizedWallet,
         role: 'voter',
+        verificationStatus: 'pending',
       },
     });
 
@@ -150,7 +215,7 @@ export const registerVoterPublic = async (req: Request, res: Response) => {
       data: {
         userId: voter.id,
         action: 'PUBLIC_SELF_REGISTER_VOTER',
-        details: `Voter "${name}" self-registered with wallet ${normalizedWallet}.`,
+        details: `Voter "${name}" self-registered with wallet ${normalizedWallet}. Status: pending.`,
       },
     });
 

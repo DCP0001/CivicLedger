@@ -117,6 +117,8 @@ export const voterLogin = async (req: Request, res: Response) => {
         email: user.email,
         role: user.role,
         walletAddress: user.walletAddress,
+        verificationStatus: user.verificationStatus,
+        verificationNotes: user.verificationNotes,
       },
     });
   } catch (error) {

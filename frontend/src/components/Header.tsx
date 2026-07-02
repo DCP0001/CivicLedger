@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAccount, useConnect, useDisconnect, useSignMessage } from 'wagmi';
 import { useAuthStore } from '@/store/authStore';
 import { useState, useEffect } from 'react';
-import { Wallet, LogOut, Shield, UserCheck, Activity, Database } from 'lucide-react';
+import { Wallet, LogOut, Shield, UserCheck, Activity, Database, Clock, XCircle } from 'lucide-react';
 import { supabase, isSupabaseConfigured, isTableMissing } from '@/config/supabase';
 import { recoverMessageAddress } from 'viem';
 
@@ -64,7 +64,9 @@ export default function Header() {
             name: voter.name,
             email: voter.email,
             role: voter.role,
-            walletAddress: voter.wallet_address
+            walletAddress: voter.wallet_address,
+            verificationStatus: voter.verification_status || 'pending',
+            verificationNotes: voter.verification_notes || null,
           });
           router.refresh();
           setLoading(false);
@@ -90,7 +92,11 @@ export default function Header() {
         throw new Error(data.error || 'Authentication failed');
       }
 
-      setVoterSession(data.token, data.user);
+      setVoterSession(data.token, {
+        ...data.user,
+        verificationStatus: data.user.verificationStatus || 'pending',
+        verificationNotes: data.user.verificationNotes || null,
+      });
       router.refresh();
     } catch (error: any) {
       console.error('Voter auth error:', error);
@@ -121,6 +127,31 @@ export default function Header() {
   const handleAdminLogout = () => {
     clearAdminSession();
     router.push('/');
+  };
+
+  const getVerificationBadge = () => {
+    if (!voterUser) return null;
+    const status = voterUser.verificationStatus;
+
+    if (status === 'verified') {
+      return (
+        <Link href="/profile" className="flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 dark:bg-emerald-950/20 dark:border-emerald-900/40 dark:text-emerald-400 hover:opacity-80 transition-opacity">
+          <UserCheck className="h-2.5 w-2.5" /> Verified
+        </Link>
+      );
+    }
+    if (status === 'rejected') {
+      return (
+        <Link href="/profile" className="flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full bg-red-50 border border-red-200 text-red-700 dark:bg-red-950/20 dark:border-red-900/40 dark:text-red-400 hover:opacity-80 transition-opacity">
+          <XCircle className="h-2.5 w-2.5" /> Rejected
+        </Link>
+      );
+    }
+    return (
+      <Link href="/profile" className="flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 dark:bg-amber-950/20 dark:border-amber-900/40 dark:text-amber-400 hover:opacity-80 transition-opacity">
+        <Clock className="h-2.5 w-2.5" /> Pending
+      </Link>
+    );
   };
 
   if (!isClient) {
@@ -197,7 +228,8 @@ export default function Header() {
               {voterToken && voterUser ? (
                 <div className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/10 border border-emerald-100 dark:border-emerald-900/30 px-3 py-1.5 rounded-xl text-emerald-650 dark:text-emerald-400 font-semibold text-xs">
                   <UserCheck className="h-3.5 w-3.5" />
-                  <span>Voter: {voterUser.name}</span>
+                  <span>{voterUser.name}</span>
+                  {getVerificationBadge()}
                 </div>
               ) : (
                 <button
@@ -221,8 +253,8 @@ export default function Header() {
                   Localhost
                 </span>
                 <span className={`text-[9px] font-bold uppercase tracking-wide border px-1.5 py-0.5 rounded ${
-                  isSupabaseConfigured() 
-                    ? 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900 text-blue-600 dark:text-blue-400' 
+                  isSupabaseConfigured()
+                    ? 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900 text-blue-600 dark:text-blue-400'
                     : 'bg-slate-100 border-slate-200 dark:bg-slate-800 dark:border-slate-700 text-slate-600 dark:text-slate-400'
                 }`}>
                   {isSupabaseConfigured() ? 'Supabase' : 'SQLite'}

@@ -25,13 +25,17 @@ CREATE TABLE IF NOT EXISTS public.candidates (
     PRIMARY KEY (election_id, id)
 );
 
--- 3. Create Voters Table
+-- 3. Create Voters Table (with verification lifecycle)
 CREATE TABLE IF NOT EXISTS public.voters (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE,
     wallet_address TEXT NOT NULL UNIQUE,
     role TEXT NOT NULL DEFAULT 'voter',
+    -- Verification lifecycle: 'pending' | 'verified' | 'rejected'
+    verification_status TEXT NOT NULL DEFAULT 'pending',
+    verification_notes TEXT,           -- Optional admin review notes
+    verified_at TIMESTAMPTZ,           -- Timestamp of last status change
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -61,6 +65,18 @@ CREATE POLICY "Allow public insert access for candidates" ON public.candidates F
 
 CREATE POLICY "Allow public read access for voters" ON public.voters FOR SELECT USING (true);
 CREATE POLICY "Allow public insert access for voters" ON public.voters FOR INSERT WITH CHECK (true);
+-- Required for admin verification approve/reject workflow
+CREATE POLICY "Allow public update access for voters" ON public.voters FOR UPDATE USING (true);
+-- Required for admin delete voter workflow
+CREATE POLICY "Allow public delete access for voters" ON public.voters FOR DELETE USING (true);
 
 CREATE POLICY "Allow public read access for vote_references" ON public.vote_references FOR SELECT USING (true);
 CREATE POLICY "Allow public insert access for vote_references" ON public.vote_references FOR INSERT WITH CHECK (true);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- If you already have an existing voters table without the new columns, run:
+-- ALTER TABLE public.voters ADD COLUMN IF NOT EXISTS verification_status TEXT NOT NULL DEFAULT 'pending';
+-- ALTER TABLE public.voters ADD COLUMN IF NOT EXISTS verification_notes TEXT;
+-- ALTER TABLE public.voters ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ;
+-- ─────────────────────────────────────────────────────────────────────────────
+

@@ -26,24 +26,28 @@ async function main() {
   });
   console.log('Admin created:', admin.email);
 
-  // 2. Create Voter Alice
+  // 2. Create Voter Alice (pre-verified for testing)
   const voter1 = await prisma.user.create({
     data: {
       name: 'Alice Johnson',
       email: 'alice@securevote.com',
       walletAddress: '0x70997970c51812dc3a010c7d01b50e0d17dc79c8', // Hardhat Signer Account 1
       role: 'voter',
+      verificationStatus: 'verified',
+      verifiedAt: new Date(),
     },
   });
   console.log('Voter 1 (Alice) created:', voter1.email);
 
-  // 3. Create Voter Bob
+  // 3. Create Voter Bob (pre-verified for testing)
   const voter2 = await prisma.user.create({
     data: {
       name: 'Bob Smith',
       email: 'bob@securevote.com',
       walletAddress: '0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc', // Hardhat Signer Account 2
       role: 'voter',
+      verificationStatus: 'verified',
+      verifiedAt: new Date(),
     },
   });
   console.log('Voter 2 (Bob) created:', voter2.email);

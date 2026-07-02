@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { useWriteContract, useAccount, useReadContract } from 'wagmi';
 import { SECURE_VOTE_ABI, SECURE_VOTE_ADDRESS } from '@/config/contract';
-import { 
-  Plus, Users, Calendar, Award, ShieldAlert, CheckCircle, Clock, Trash, Database, Globe 
+import {
+  Plus, Users, ShieldAlert, CheckCircle, Clock, Trash, Database, Globe,
+  BadgeCheck, XCircle, MessageSquare, CalendarDays, Loader2
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured, isTableMissing } from '@/config/supabase';
 
@@ -34,6 +35,9 @@ interface Voter {
   email: string;
   walletAddress: string;
   role: string;
+  verificationStatus?: 'pending' | 'verified' | 'rejected';
+  verificationNotes?: string | null;
+  createdAt?: string;
 }
 
 interface WhitelistVoterButtonProps {
@@ -88,12 +92,16 @@ export default function AdminDashboard() {
   const { writeContractAsync } = useWriteContract();
 
   // Navigation tabs
-  const [activeTab, setActiveTab] = useState<'elections' | 'voters'>('elections');
+  const [activeTab, setActiveTab] = useState<'elections' | 'voters' | 'verification'>('elections');
 
   // Lists
   const [elections, setElections] = useState<Election[]>([]);
   const [voters, setVoters] = useState<Voter[]>([]);
+  const [pendingVoters, setPendingVoters] = useState<Voter[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Verification review notes state
+  const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
 
   // Forms - Election Creation
   const [elId, setElId] = useState('');
@@ -150,12 +158,14 @@ export default function AdminDashboard() {
 
         const { data: voData, error: voErr } = await supabase!
           .from('voters')
-          .select('id, name, email, walletAddress:wallet_address, role')
+          .select('id, name, email, walletAddress:wallet_address, role, verificationStatus:verification_status, verificationNotes:verification_notes, createdAt:created_at')
           .order('created_at', { ascending: false });
 
         if (!elErr && !voErr) {
+          const allVoters = (voData as any) || [];
           setElections((elData as any) || []);
-          setVoters((voData as any) || []);
+          setVoters(allVoters);
+          setPendingVoters(allVoters.filter((v: Voter) => v.verificationStatus === 'pending'));
           setLoading(false);
           return;
         }
@@ -167,11 +177,67 @@ export default function AdminDashboard() {
       });
 
       if (elRes.ok) setElections(await elRes.json());
-      if (voRes.ok) setVoters(await voRes.json());
+      if (voRes.ok) {
+        const allVoters = await voRes.json();
+        setVoters(allVoters);
+        setPendingVoters(allVoters.filter((v: Voter) => v.verificationStatus === 'pending'));
+      }
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Approve or Reject a voter
+  const handleVerifyVoter = async (voterId: string, status: 'verified' | 'rejected', voterName: string) => {
+    const notes = reviewNotes[voterId] || '';
+    const action = status === 'verified' ? 'approve' : 'reject';
+    if (!confirm(`Are you sure you want to ${action} voter "${voterName}"?`)) return;
+    setActionLoading(true);
+
+    try {
+      if (isSupabaseConfigured()) {
+        const { error: sbErr } = await supabase!
+          .from('voters')
+          .update({
+            verification_status: status,
+            verification_notes: notes || null,
+            verified_at: new Date().toISOString(),
+          })
+          .eq('id', voterId);
+
+        if (!sbErr) {
+          showMsg(`Voter "${voterName}" has been ${status === 'verified' ? 'approved ✓' : 'rejected ✗'}.`, status === 'verified' ? 'success' : 'error');
+          setReviewNotes((prev) => { const n = { ...prev }; delete n[voterId]; return n; });
+          fetchData();
+          return;
+        } else if (!isTableMissing(sbErr)) {
+          throw new Error('Supabase verification update failed: ' + sbErr.message);
+        }
+      }
+
+      const response = await fetch(`http://localhost:5000/api/voters/${voterId}/verify`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${adminToken}`,
+        },
+        body: JSON.stringify({ status, notes }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Verification update failed');
+      }
+
+      showMsg(`Voter "${voterName}" has been ${status === 'verified' ? 'approved ✓' : 'rejected ✗'}.`, status === 'verified' ? 'success' : 'error');
+      setReviewNotes((prev) => { const n = { ...prev }; delete n[voterId]; return n; });
+      fetchData();
+    } catch (err: any) {
+      showMsg(err.message || 'Verification failed', 'error');
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -592,8 +658,8 @@ export default function AdminDashboard() {
           <button
             onClick={() => setActiveTab('elections')}
             className={`px-4 py-2 rounded-lg text-xs font-bold transition-all duration-150 ${
-              activeTab === 'elections' 
-                ? 'bg-white dark:bg-[#0f1524] text-blue-600 dark:text-blue-400 shadow-sm border border-slate-200/50' 
+              activeTab === 'elections'
+                ? 'bg-white dark:bg-[#0f1524] text-blue-600 dark:text-blue-400 shadow-sm border border-slate-200/50'
                 : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-250'
             }`}
           >
@@ -602,12 +668,27 @@ export default function AdminDashboard() {
           <button
             onClick={() => setActiveTab('voters')}
             className={`px-4 py-2 rounded-lg text-xs font-bold transition-all duration-150 ${
-              activeTab === 'voters' 
-                ? 'bg-white dark:bg-[#0f1524] text-blue-600 dark:text-blue-400 shadow-sm border border-slate-200/50' 
+              activeTab === 'voters'
+                ? 'bg-white dark:bg-[#0f1524] text-blue-600 dark:text-blue-400 shadow-sm border border-slate-200/50'
                 : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-250'
             }`}
           >
             Voter Registry
+          </button>
+          <button
+            onClick={() => setActiveTab('verification')}
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all duration-150 flex items-center gap-2 ${
+              activeTab === 'verification'
+                ? 'bg-white dark:bg-[#0f1524] text-amber-600 dark:text-amber-400 shadow-sm border border-slate-200/50'
+                : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-250'
+            }`}
+          >
+            Verification Queue
+            {pendingVoters.length > 0 && (
+              <span className="inline-flex items-center justify-center h-4.5 min-w-[1.15rem] px-1 rounded-full bg-amber-500 text-white text-[9px] font-bold">
+                {pendingVoters.length}
+              </span>
+            )}
           </button>
         </div>
       </div>
@@ -884,6 +965,133 @@ export default function AdminDashboard() {
             </div>
           </div>
         </div>
+      ) : activeTab === 'verification' ? (
+        <div className="space-y-6">
+          {/* Verification Queue Panel */}
+          <div className="saas-card p-6 space-y-6">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+              <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <BadgeCheck className="h-4.5 w-4.5 text-amber-500" />
+                Pending Verification Requests
+              </h3>
+              <span className="text-[9px] font-bold bg-amber-50 border border-amber-200 text-amber-700 dark:bg-amber-950/20 dark:border-amber-900/40 dark:text-amber-400 px-2.5 py-0.5 rounded">
+                {pendingVoters.length} Pending
+              </span>
+            </div>
+
+            {pendingVoters.length === 0 ? (
+              <div className="text-center py-16 space-y-3">
+                <BadgeCheck className="h-12 w-12 text-emerald-400 mx-auto" />
+                <p className="text-sm font-bold text-slate-600 dark:text-slate-400">All caught up!</p>
+                <p className="text-xs text-slate-400">No pending verification requests at this time.</p>
+              </div>
+            ) : (
+              <div className="space-y-5">
+                {pendingVoters.map((voter) => (
+                  <div key={voter.id} className="p-5 bg-amber-50/40 dark:bg-amber-950/10 border border-amber-200 dark:border-amber-900/40 rounded-xl space-y-4">
+                    {/* Voter Info Header */}
+                    <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">{voter.name}</h4>
+                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-100 border border-amber-200 text-amber-700 dark:bg-amber-950/30 dark:border-amber-900/50 dark:text-amber-400 flex items-center gap-1">
+                            <Clock className="h-2.5 w-2.5" /> Pending Review
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500">{voter.email}</p>
+                        <p className="font-mono text-[10px] text-blue-600 dark:text-blue-400">{voter.walletAddress}</p>
+                        {voter.createdAt && (
+                          <p className="text-[10px] text-slate-400 flex items-center gap-1">
+                            <CalendarDays className="h-3 w-3" />
+                            Registered {new Date(voter.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Review Notes */}
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
+                        Review Notes (Optional)
+                      </label>
+                      <textarea
+                        value={reviewNotes[voter.id] || ''}
+                        onChange={(e) => setReviewNotes((prev) => ({ ...prev, [voter.id]: e.target.value }))}
+                        placeholder="Add reason for approval or rejection..."
+                        rows={2}
+                        className="w-full input-premium focus:border-blue-500/50 outline-none rounded-xl py-2 px-3 text-xs text-slate-800 dark:text-slate-200 transition-colors"
+                      />
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => handleVerifyVoter(voter.id, 'verified', voter.name)}
+                        disabled={actionLoading}
+                        className="flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 dark:bg-emerald-950/20 dark:border-emerald-900/30 dark:text-emerald-400 text-xs font-bold px-4 py-2 rounded-xl transition-all active:scale-97 disabled:opacity-50"
+                      >
+                        <BadgeCheck className="h-3.5 w-3.5" /> Approve
+                      </button>
+                      <button
+                        onClick={() => handleVerifyVoter(voter.id, 'rejected', voter.name)}
+                        disabled={actionLoading}
+                        className="flex items-center gap-1.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 dark:bg-red-950/20 dark:border-red-900/30 dark:text-red-400 text-xs font-bold px-4 py-2 rounded-xl transition-all active:scale-97 disabled:opacity-50"
+                      >
+                        <XCircle className="h-3.5 w-3.5" /> Reject
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* All Voters with Status Overview */}
+          <div className="saas-card p-6 space-y-4">
+            <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+              <span>All Voters — Verification Status</span>
+              <span className="text-[9px] font-bold bg-slate-100 border border-slate-200 text-slate-650 px-2.5 py-0.5 rounded dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400">Total: {voters.length}</span>
+            </h3>
+            {voters.length === 0 ? (
+              <p className="text-xs text-slate-400 text-center py-8">No voters in the system.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-slate-500">
+                  <thead>
+                    <tr className="text-slate-400 dark:text-slate-500 text-[9px] uppercase font-bold tracking-wider">
+                      <th className="py-2.5 px-2">Name</th>
+                      <th className="py-2.5 px-2">Email</th>
+                      <th className="py-2.5 px-2">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {voters.map((voter) => (
+                      <tr key={voter.id} className="hover:bg-slate-50 dark:hover:bg-slate-850/30 transition-colors border-t border-slate-100 dark:border-slate-800">
+                        <td className="py-3 px-2 font-bold text-slate-800 dark:text-slate-200">{voter.name}</td>
+                        <td className="py-3 px-2">{voter.email}</td>
+                        <td className="py-3 px-2">
+                          {voter.verificationStatus === 'verified' ? (
+                            <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 dark:bg-emerald-950/20 dark:border-emerald-900/30 dark:text-emerald-400 w-fit">
+                              <BadgeCheck className="h-3 w-3" /> Verified
+                            </span>
+                          ) : voter.verificationStatus === 'rejected' ? (
+                            <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-50 border border-red-200 text-red-700 dark:bg-red-950/20 dark:border-red-900/30 dark:text-red-400 w-fit">
+                              <XCircle className="h-3 w-3" /> Rejected
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 dark:bg-amber-950/20 dark:border-amber-900/30 dark:text-amber-400 w-fit">
+                              <Clock className="h-3 w-3" /> Pending
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Register Voter Panel */}
@@ -948,7 +1156,7 @@ export default function AdminDashboard() {
               </h3>
 
               {voters.length === 0 ? (
-                <p className="text-xs text-slate-450 text-center py-10">No voters whitelisted in the directory database.</p>
+                <p className="text-xs text-slate-450 text-center py-10">No voters registered in the directory database.</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs text-slate-500 glass-table">
@@ -957,6 +1165,7 @@ export default function AdminDashboard() {
                         <th className="py-2.5 px-2">Name</th>
                         <th className="py-2.5 px-2">Email</th>
                         <th className="py-2.5 px-2">Wallet Address</th>
+                        <th className="py-2.5 px-2">Status</th>
                         <th className="py-2.5 px-2 text-right">Actions</th>
                       </tr>
                     </thead>
@@ -966,6 +1175,21 @@ export default function AdminDashboard() {
                           <td className="py-3.5 px-2 font-bold text-slate-800 dark:text-slate-200">{voter.name}</td>
                           <td className="py-3.5 px-2">{voter.email}</td>
                           <td className="py-3.5 px-2 font-mono text-blue-600 dark:text-blue-450">{voter.walletAddress}</td>
+                          <td className="py-3.5 px-2">
+                            {voter.verificationStatus === 'verified' ? (
+                              <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 dark:bg-emerald-950/20 dark:border-emerald-900/30 dark:text-emerald-400 w-fit">
+                                <BadgeCheck className="h-3 w-3" /> Verified
+                              </span>
+                            ) : voter.verificationStatus === 'rejected' ? (
+                              <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-50 border border-red-200 text-red-700 dark:bg-red-950/20 dark:border-red-900/30 dark:text-red-400 w-fit">
+                                <XCircle className="h-3 w-3" /> Rejected
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 dark:bg-amber-950/20 dark:border-amber-900/30 dark:text-amber-400 w-fit">
+                                <Clock className="h-3 w-3" /> Pending
+                              </span>
+                            )}
+                          </td>
                           <td className="py-3.5 px-2 text-right">
                             <button
                               onClick={() => handleDeleteVoter(voter.id, voter.name)}

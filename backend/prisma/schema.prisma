@@ -8,15 +8,18 @@ generator client {
 }
 
 model User {
-  id            String    @id @default(uuid())
-  name          String
-  email         String    @unique
-  passwordHash  String?   // Nullable for voters who log in using wallet only
-  walletAddress String    @unique
-  role          String    // "admin" or "voter"
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  auditLogs     AuditLog[]
+  id                  String    @id @default(uuid())
+  name                String
+  email               String    @unique
+  passwordHash        String?   // Nullable for voters who log in using wallet only
+  walletAddress       String    @unique
+  role                String    // "admin" or "voter"
+  verificationStatus  String    @default("pending") // "pending" | "verified" | "rejected"
+  verificationNotes   String?   // Optional admin review notes
+  verifiedAt          DateTime? // Timestamp when verified or rejected
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  auditLogs           AuditLog[]
 }
 
 model Election {
