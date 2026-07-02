@@ -8,8 +8,7 @@ import { useAuthStore } from '@/store/authStore';
 import { supabase, isSupabaseConfigured, isTableMissing } from '@/config/supabase';
 import { recoverMessageAddress } from 'viem';
 import {
-  Wallet, LogIn, AlertCircle, Loader2, ShieldCheck, ChevronRight,
-  Activity, UserCheck, ArrowRight
+  Wallet, LogIn, AlertCircle, Loader2, ShieldCheck, ChevronRight, Activity, ArrowRight
 } from 'lucide-react';
 
 export default function VoterLogin() {
@@ -22,11 +21,6 @@ export default function VoterLogin() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -35,10 +29,22 @@ export default function VoterLogin() {
     }
   }, [voterToken, router]);
 
-  const metamaskConnector = isClient
-    ? connectors.find((c) => c.id === 'metaMask') || connectors[0]
-    : null;
+  // Connect wallet — pick MetaMask or first available connector at click time
+  const handleConnect = () => {
+    setError(null);
+    const connector =
+      connectors.find((c) => c.id === 'metaMask') ||
+      connectors.find((c) => c.id === 'injected') ||
+      connectors[0];
 
+    if (!connector) {
+      setError('No wallet found. Please install MetaMask extension and refresh.');
+      return;
+    }
+    connect({ connector });
+  };
+
+  // Sign message to authenticate
   const handleSign = async () => {
     if (!address) return;
     setLoading(true);
@@ -108,14 +114,6 @@ export default function VoterLogin() {
     }
   };
 
-  if (!isClient) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-[80vh] flex items-center justify-center py-10">
       <div className="w-full max-w-md space-y-6 fade-slide-in">
@@ -145,7 +143,7 @@ export default function VoterLogin() {
           )}
 
           {!isConnected ? (
-            /* Step 1: Connect Wallet */
+            /* ── Step 1: Connect Wallet ── */
             <div className="space-y-5">
               <div className="text-center space-y-1.5">
                 <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center mx-auto">
@@ -158,7 +156,8 @@ export default function VoterLogin() {
               </div>
 
               <button
-                onClick={() => metamaskConnector && connect({ connector: metamaskConnector })}
+                type="button"
+                onClick={handleConnect}
                 className="btn-premium w-full flex items-center justify-center gap-2 text-sm font-bold py-3 rounded-xl"
               >
                 <Wallet className="h-4 w-4" />
@@ -170,7 +169,7 @@ export default function VoterLogin() {
                 <p className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">How it works</p>
                 {[
                   'Connect your registered Ethereum wallet',
-                  'Sign a one-time security message',
+                  'Sign a one-time security message (no gas)',
                   'View your verification status instantly',
                 ].map((step, i) => (
                   <div key={i} className="flex items-center gap-2 text-[11px] text-blue-700 dark:text-blue-300">
@@ -183,9 +182,9 @@ export default function VoterLogin() {
               </div>
             </div>
           ) : (
-            /* Step 2: Sign & Authenticate */
+            /* ── Step 2: Sign & Authenticate ── */
             <div className="space-y-5">
-              {/* Connected wallet display */}
+              {/* Connected wallet pill */}
               <div className="flex items-center gap-3 p-4 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 rounded-xl">
                 <span className="relative flex h-2.5 w-2.5 shrink-0">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -208,6 +207,7 @@ export default function VoterLogin() {
               </div>
 
               <button
+                type="button"
                 onClick={handleSign}
                 disabled={loading}
                 className="btn-premium w-full flex items-center justify-center gap-2 text-sm font-bold py-3 rounded-xl disabled:opacity-60"
@@ -215,13 +215,14 @@ export default function VoterLogin() {
                 {loading ? (
                   <><Loader2 className="h-4 w-4 animate-spin" /> Verifying...</>
                 ) : (
-                  <><LogIn className="h-4 w-4" /> Sign & Login</>
+                  <><LogIn className="h-4 w-4" /> Sign &amp; Login</>
                 )}
               </button>
 
               <button
+                type="button"
                 onClick={() => { disconnect(); setError(null); }}
-                className="w-full text-center text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                className="w-full text-center text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors py-1"
               >
                 Use a different wallet
               </button>
