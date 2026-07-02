@@ -42,3 +42,18 @@ Migrated the entire frontend layout from the legacy cyberpunk neon theme to a pr
 ## 6. Voter Deletion for Administrators
 * **Backend Endpoint:** Added a `DELETE /api/voters/:id` endpoint in the backend controllers.
 * **Frontend Actions:** Placed a Trash icon button on the Registered Voters Directory in the Admin Dashboard, supporting voter profile deletions.
+
+---
+
+## 7. Voter Verification Lifecycle & Login Flow
+* **Verification Status Model**: Added `verificationStatus` (`pending` | `verified` | `rejected`), `verificationNotes`, and `verifiedAt` columns to user records.
+* **3-State Voter Dashboard (`/profile`)**: Dynamic conditional layout:
+  - *Pending*: Shows a registration submission stepper and progress status.
+  - *Verified*: Shows eligible elections and cast vote actions.
+  - *Rejected*: Shows a disclaimer box containing notes and review feedback from the election administrator.
+* **Admin Verification Queue**: Built a **Verification Queue** tab on the administrator dashboard to approve/reject pending registrations.
+* **Voter Login Flow (`/login`)**: Added a 2-step wallet connection and cryptographic signature login path for voters, linking automatically to their profile verification status.
+* **Bug Fixes**:
+  - *CORS PATCH Method*: Added `PATCH` to allowed CORS methods on backend to prevent CORS preflight block on `/verify` route.
+  - *Wagmi Connector Identification*: Upgraded to TanStack / Wagmi `metaMask()` and `injected()` connectors to resolve connection initialization errors.
+
