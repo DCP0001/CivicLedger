@@ -154,11 +154,13 @@ export default function AdminLogin() {
           </button>
         )}
 
-        <div className="flex items-center gap-3 my-4">
-          <div className="h-px bg-white/5 flex-1" />
-          <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">or credentials</span>
-          <div className="h-px bg-white/5 flex-1" />
-        </div>
+        {isConnected && (
+          <div className="flex items-center gap-3 my-4">
+            <div className="h-px bg-white/5 flex-1" />
+            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">or credentials</span>
+            <div className="h-px bg-white/5 flex-1" />
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
