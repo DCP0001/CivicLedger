@@ -165,7 +165,8 @@ export default function Header() {
     );
   }
 
-  const metamaskConnector = connectors.find((c) => c.id === 'metaMask') || connectors[0];
+  // metaMask() is first connector in wagmi config — use connectors[0] as the reliable pick
+  const metamaskConnector = connectors[0];
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200 dark:border-slate-800/80 bg-white/90 dark:bg-[#0f1524]/90 backdrop-blur-md">
@@ -281,8 +282,9 @@ export default function Header() {
                 <span>DB: {isSupabaseConfigured() ? 'Supabase Cloud' : 'Local SQLite'}</span>
               </div>
               <button
-                onClick={() => connect({ connector: metamaskConnector })}
-                className="btn-premium flex items-center gap-2 text-white text-xs font-bold px-4.5 py-2.5 rounded-xl transition-all shadow-md active:scale-95"
+                onClick={() => metamaskConnector && connect({ connector: metamaskConnector })}
+                disabled={!metamaskConnector}
+                className="btn-premium flex items-center gap-2 text-white text-xs font-bold px-4.5 py-2.5 rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50"
               >
                 <Wallet className="h-3.5 w-3.5" />
                 Connect Wallet

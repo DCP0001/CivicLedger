@@ -32,13 +32,11 @@ export default function VoterLogin() {
   // Connect wallet — pick MetaMask or first available connector at click time
   const handleConnect = () => {
     setError(null);
-    const connector =
-      connectors.find((c) => c.id === 'metaMask') ||
-      connectors.find((c) => c.id === 'injected') ||
-      connectors[0];
+    // metaMask() connector is registered first in wagmi config
+    const connector = connectors[0] || connectors.find((c) => c.type === 'injected');
 
     if (!connector) {
-      setError('No wallet found. Please install MetaMask extension and refresh.');
+      setError('No wallet found. Please install MetaMask extension and refresh the page.');
       return;
     }
     connect({ connector });
