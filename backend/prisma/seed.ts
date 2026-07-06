@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { BlockchainEngine } from '../src/blockchain/blockchain';
 
 const prisma = new PrismaClient();
 
@@ -11,7 +12,13 @@ async function main() {
   await prisma.voteReference.deleteMany({});
   await prisma.candidate.deleteMany({});
   await prisma.election.deleteMany({});
+  await prisma.whitelistedVoter.deleteMany({});
+  await prisma.transaction.deleteMany({});
+  await prisma.block.deleteMany({});
   await prisma.user.deleteMany({});
+
+  // Initialize Genesis Block
+  await BlockchainEngine.initGenesisBlock();
 
   // 1. Create Admin
   const adminPasswordHash = await bcrypt.hash('adminpassword123', 10);

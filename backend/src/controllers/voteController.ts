@@ -61,23 +61,39 @@ export const getTransactionDetails = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Transaction hash is required' });
     }
 
-    const voteRef = await prisma.voteReference.findUnique({
-      where: { transactionHash: hash.toLowerCase() },
+    const tx = await prisma.transaction.findUnique({
+      where: { id: hash.toLowerCase() },
       include: {
-        election: {
-          select: {
-            title: true,
-            status: true,
-          },
-        },
+        block: true,
       },
     });
 
-    if (!voteRef) {
-      return res.status(404).json({ error: 'Transaction reference not found in off-chain logs' });
+    if (!tx) {
+      return res.status(404).json({ error: 'Transaction not found in blockchain ledger' });
     }
 
-    res.json(voteRef);
+    const payload = JSON.parse(tx.payload);
+    const electionId = payload.electionId;
+
+    const election = await prisma.election.findUnique({
+      where: { id: electionId },
+      select: {
+        title: true,
+        status: true,
+      },
+    });
+
+    res.json({
+      id: tx.id,
+      electionId,
+      walletAddress: tx.sender,
+      transactionHash: tx.id,
+      timestamp: tx.timestamp,
+      signature: tx.signature,
+      blockIndex: tx.blockIndex,
+      block: tx.block,
+      election: election || { title: 'Unknown Election', status: 'unknown' },
+    });
   } catch (error) {
     console.error('Verify transaction error:', error);
     res.status(500).json({ error: 'Failed to retrieve transaction reference' });

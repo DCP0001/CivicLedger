@@ -18,6 +18,72 @@ secure-vote/
 
 ---
 
+## Custom Blockchain & Consensus Architecture (Alternative Path)
+
+While this project currently utilizes Ethereum smart contracts (via Hardhat/EVM) and MetaMask, transition to a custom permissioned blockchain is a highly viable alternative for institutional elections. This model eliminates the need for third-party browser extensions like MetaMask by handling key management or local signature generation.
+
+### Transaction Lifecycle Flow
+
+```mermaid
+flowchart TD
+    A["Voter / User"] -->|1. Sign Ballot| B["Digital Signature"]
+    B -->|2. Post Payload| C["Your API (Express)"]
+    C -->|3. Route Transaction| D["Your Blockchain Node"]
+    D -->|4. Consensus Audit| E{"Nodes Verify"}
+    E -->|5. Commit Block| F["Block Added to Ledger"]
+```
+
+> [!NOTE]
+> In this implementation route, client-side MetaMask interaction is replaced by a native signature verification API or dedicated key-management service (KMS).
+
+### Consensus Mechanism Options
+
+Building a permissioned network for elections avoids the energy-intensive mining of public blockchains (Proof of Work). Instead, the system uses modern, lightweight consensus models:
+
+* **Proof of Authority (PoA) — *Recommended for Elections***
+  Only pre-authorized validator nodes (e.g., trusted election servers, independent oversight bodies) can validate transactions and mint blocks. This provides fast finality, low latency, and zero gas-fee reliance.
+* **Practical Byzantine Fault Tolerance (PBFT)**
+  A standard model for consortium blockchains. It ensures nodes reach consensus as long as two-thirds of the network behaves honestly, offering instant block finality.
+* **RAFT**
+  A leader-based consensus algorithm that is simple, clean, and highly performant. Best suited for fully trusted environments where Byzantine fault tolerance is not required.
+
+### Proposed System Architecture
+
+```mermaid
+graph TD
+    subgraph User Space
+        FE["Frontend (Next.js)"]
+    end
+
+    subgraph Application Service
+        BE["Backend (Express.js)"]
+        VV["Vote Validator"]
+    end
+
+    subgraph Blockchain Engine
+        HG["Hash Generator"]
+        DSV["Digital Signature Verifier"]
+        BG["Block Generator"]
+        CM["Consensus Manager"]
+        CV["Chain Validator"]
+        LS[("Ledger Storage")]
+    end
+
+    FE -->|API Requests| BE
+    BE -->|Raw Ballots| VV
+    VV -->|Validated Payload| HG
+    
+    HG --> DSV
+    DSV --> BG
+    BG --> CM
+    CM --> CV
+    CV --> LS
+    
+    LS -.->|State Replication| VN["Validator Nodes"]
+```
+
+---
+
 ## Prerequisites
 
 Make sure the following are installed on your machine:
@@ -137,7 +203,7 @@ npm run frontend:dev
 - **MetaMask Account:** Hardhat Account #0
 
 ### Test Voter Accounts (pre-seeded)
-These are registered in the SQLite database and can authenticate via MetaMask:
+These are registered in the SQLite database as **pre-verified** (`verificationStatus: "verified"`) and can authenticate via their wallets:
 - **Alice Johnson** → Hardhat Account #1 (`0x70997970C51812dc3A010C7d01b50e0d17dc79C8`)
 - **Bob Smith** → Hardhat Account #2 (`0x3C44cDDdB6a900fa2b585dd299e03d12FA4293BC`)
 
@@ -162,35 +228,55 @@ These are registered in the SQLite database and can authenticate via MetaMask:
 | URL | Description |
 |-----|-------------|
 | `http://localhost:3000/` | Public homepage — lists active elections |
-| `http://localhost:3000/register` | Self-register as a voter (generates wallet if needed) |
-| `http://localhost:3000/profile` | Voter profile — whitelist status, ballot links |
-| `http://localhost:3000/elections/:id/vote` | Cast ballot page |
-| `http://localhost:3000/elections/:id/results` | Election results & winner |
-| `http://localhost:3000/verify` | Public blockchain ballot audit ledger |
-| `http://localhost:3000/admin/login` | Admin login |
-| `http://localhost:3000/admin/dashboard` | Admin control panel |
+| `http://localhost:3000/login` | Voter login (2-step: wallet connection & cryptographic signature) |
+| `http://localhost:3000/register` | Voter self-registration (includes automatic Ethereum wallet generator) |
+| `http://localhost:3000/profile` | 3-state voter status page (Pending stepper, Verified dashboard, or Rejected notice) |
+| `http://localhost:3000/elections/:id/vote` | Cast ballot page (with 5-step blockchain progress stepper) |
+| `http://localhost:3000/elections/:id/results` | Election tabulation, percent bars, and declared winner |
+| `http://localhost:3000/verify` | Public audit ledger showing real-time blockchain verification timeline |
+| `http://localhost:3000/admin/login` | Admin login page |
+| `http://localhost:3000/admin/dashboard` | Admin panel (Elections, Candidates, Voter Directory, and Verification Queue) |
 
 ---
 
-## Voter Registration Flow (End-to-End)
+## Voter Registration & Verification Flow (End-to-End)
 
-1. **Voter visits `/register`** — fills in Name, Email, Wallet Address (or generates a new one in-browser)
-2. **Admin logs into `/admin/dashboard`** — sees voter in the Voter Registry directory
-3. **Admin whitelists voter on-chain** — clicks "Whitelist" for the specific election (calls smart contract `registerVoter`)
-4. **Voter connects MetaMask** → visits `/profile` → sees "Whitelisted" status ✅
-5. **Voter clicks "Go Vote"** → signs transaction on MetaMask → ballot recorded on blockchain
+1. **Self-Registration (`/register`):**
+   - The voter fills in their Name, Email, and Wallet Address.
+   - If they do not have an external wallet (like MetaMask), they can use the built-in **Ethereum Wallet Generator** (utilizing `viem`) to instantly create a new wallet in-browser.
+   - Once submitted, their profile status is set to `pending`.
+
+2. **Voter Authentication & Login (`/login`):**
+   - The voter connects their Ethereum wallet (MetaMask or private key).
+   - They perform a **2-step login** by signing a cryptographic message to verify ownership and receive a JWT session token.
+
+3. **Pending Status Check (`/profile`):**
+   - After logging in, the voter is redirected to `/profile`.
+   - If their status is `pending`, they see a visual registration submission progress stepper.
+
+4. **Administrator Verification Queue (`/admin/dashboard`):**
+   - The administrator logs in and opens the **Verification Queue** tab.
+   - The administrator inspects pending registrations and chooses to **Approve** (sets status to `verified`) or **Reject** them (with optional notes detailing the reason).
+   - *If rejected*, the voter's `/profile` page shows a disclaimer box with the rejection notes. The voter can correct details and re-submit.
+   - *If verified*, the voter becomes eligible for election whitelisting.
+
+5. **On-Chain Whitelisting:**
+   - On the Admin Dashboard, the administrator clicks **Whitelist** for the voter for a specific election, triggering the smart contract's `registerVoter` function.
+
+6. **Ballot Casting:**
+   - Once verified and whitelisted, the voter's `/profile` displays active elections.
+   - Clicking "Go Vote" navigates to `/elections/:id/vote`, where they select their candidate and complete a **5-step blockchain progress stepper** to sign and commit their ballot on-chain.
 
 ---
 
 ## Admin Actions Summary
 
 From the Admin Dashboard (`/admin/dashboard`):
-- Create elections (synced on-chain + off-chain database)
-- Add candidates to elections
-- Start/End elections (on-chain state transitions)
-- Register voters manually (off-chain directory)
-- Whitelist voter wallets on-chain per election
-- **Delete voter profiles** (new — trash icon in Voter Directory)
+- **Elections Management:** Create elections (synced on-chain + off-chain) and start/end elections on-chain.
+- **Candidate Mapping:** Assign candidates with descriptions/photos to specific elections (before starting).
+- **Voter Verification Queue:** Review, approve, or reject (with feedback notes) new voter applications.
+- **On-Chain Whitelisting:** Register verified voters' addresses on the contract per election.
+- **Registered Voters Directory:** View and manage the database directory, including the option to **Delete voter profiles** via the trash icon.
 
 ---
 

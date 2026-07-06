@@ -1,0 +1,254 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800&display=swap');
+
+@import "tailwindcss";
+
+@theme {
+  --color-slate-150: #eaedf2;
+  --color-slate-205: #e2e8f0;
+  --color-slate-250: #d6dee9;
+  --color-slate-350: #b1becd;
+  --color-slate-405: #94a3b8;
+  --color-slate-450: #7c8ba1;
+  --color-slate-505: #64748b;
+  --color-slate-550: #556479;
+  --color-slate-650: #3d4a5d;
+  --color-slate-750: #283547;
+  --color-slate-850: #172030;
+  --color-slate-950: #0b0f19;
+
+  --color-blue-650: #1d4ed8;
+  --color-blue-750: #1e40af;
+  --color-blue-850: #1e3a8a;
+  
+  --color-emerald-250: #a7f3d0;
+  --color-emerald-650: #047857;
+  
+  --color-amber-350: #d97706;
+  
+  --color-red-250: #fecaca;
+  --color-red-750: #b91c1c;
+  --color-red-755: #991b1b;
+}
+
+:root {
+  /* Light Theme Variables */
+  --bg-app: #f8fafc;
+  --bg-sidebar: #ffffff;
+  --bg-card: #ffffff;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --border-color: #e2e8f0;
+  
+  --primary-color: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-glow: rgba(37, 99, 235, 0.15);
+  
+  --secondary-color: #64748b;
+  --secondary-hover: #475569;
+  
+  --success-color: #10b981;
+  --success-bg: rgba(16, 185, 129, 0.08);
+  --success-border: rgba(16, 185, 129, 0.18);
+  
+  --warning-color: #f59e0b;
+  --warning-bg: rgba(245, 158, 11, 0.08);
+  --warning-border: rgba(245, 158, 11, 0.18);
+  
+  --danger-color: #ef4444;
+  --danger-bg: rgba(239, 68, 68, 0.08);
+  --danger-border: rgba(239, 68, 68, 0.18);
+  
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.04), 0 4px 6px -4px rgba(0, 0, 0, 0.02);
+  --shadow-soft: 0 12px 30px -10px rgba(100, 116, 139, 0.08);
+}
+
+[data-theme="dark"], .dark-theme-active {
+  /* Dark Theme Variables */
+  --bg-app: #090d16;
+  --bg-sidebar: #0f1524;
+  --bg-card: #0f1524;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --border-color: #1e293b;
+  
+  --primary-color: #3b82f6;
+  --primary-hover: #2563eb;
+  --primary-glow: rgba(59, 130, 246, 0.2);
+  
+  --secondary-color: #94a3b8;
+  --secondary-hover: #cbd5e1;
+  
+  --success-color: #34d399;
+  --success-bg: rgba(52, 211, 153, 0.1);
+  --success-border: rgba(52, 211, 153, 0.2);
+  
+  --warning-color: #fbbf24;
+  --warning-bg: rgba(251, 191, 36, 0.1);
+  --warning-border: rgba(251, 191, 36, 0.2);
+  
+  --danger-color: #f87171;
+  --danger-bg: rgba(248, 113, 113, 0.1);
+  --danger-border: rgba(248, 113, 113, 0.2);
+  
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.2);
+  --shadow-soft: 0 12px 30px -10px rgba(0, 0, 0, 0.5);
+}
+
+body {
+  color: var(--text-main);
+  background-color: var(--bg-app);
+  min-height: 100vh;
+  font-family: 'Inter', sans-serif;
+  overflow-x: hidden;
+  position: relative;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+h1, h2, h3, h4, .font-heading {
+  font-family: 'Outfit', sans-serif;
+}
+
+/* Custom Selection */
+::selection {
+  background: var(--primary-glow);
+  color: var(--primary-color);
+}
+
+/* Premium SaaS Card System */
+.glass-panel, .saas-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  box-shadow: var(--shadow-md), var(--shadow-soft);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.glass-panel-hover:hover, .saas-card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg), 0 12px 30px -5px rgba(37, 99, 235, 0.04);
+  border-color: rgba(37, 99, 235, 0.25);
+}
+
+.glass-panel-selected, .saas-card-selected {
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow-lg), 0 0 0 3px var(--primary-glow);
+}
+
+/* Cyber card placeholder override to support standard styling */
+.cyber-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  box-shadow: var(--shadow-md);
+}
+
+.cyber-card::before {
+  display: none; /* remove gradient line */
+}
+
+/* SaaS Button System */
+.btn-premium {
+  background-color: var(--primary-color);
+  border: 1px solid transparent;
+  color: #ffffff;
+  font-weight: 500;
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.15s ease-in-out;
+}
+
+.btn-premium:hover:not(:disabled) {
+  background-color: var(--primary-hover);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+  transform: translateY(-0.5px);
+}
+
+.btn-premium:active:not(:disabled) {
+  transform: translateY(0.5px);
+}
+
+.btn-premium-outline {
+  background-color: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  font-weight: 500;
+  border-radius: 12px;
+  transition: all 0.15s ease-in-out;
+}
+
+.btn-premium-outline:hover:not(:disabled) {
+  background-color: var(--bg-app);
+  border-color: var(--secondary-color);
+}
+
+/* Premium Inputs */
+.input-premium {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  color: var(--text-main);
+  transition: all 0.15s ease-in-out;
+}
+
+.input-premium:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+/* Animation utilities - Framer-like CSS animations */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-slide-in {
+  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Scrollbar customizations */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-app);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--secondary-color);
+}
+
+/* Glass table */
+.glass-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.glass-table th {
+  color: var(--text-muted);
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-color);
+  background-color: rgba(0, 0, 0, 0.01);
+}
+
+.glass-table td {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.glass-table tr:hover td {
+  background-color: rgba(37, 99, 235, 0.015);
+}

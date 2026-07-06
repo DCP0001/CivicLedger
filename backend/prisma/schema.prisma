@@ -29,6 +29,7 @@ model Election {
   startDate      DateTime
   endDate        DateTime
   status         String    // "draft", "active", "ended", "archived"
+  totalVotes     Int       @default(0) // Added for custom blockchain tracking
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   candidates     Candidate[]
@@ -42,6 +43,7 @@ model Candidate {
   party       String
   imageUrl    String
   description String
+  voteCount   Int      @default(0) // Added for custom blockchain vote tracking
   election    Election @relation(fields: [electionId], references: [id], onDelete: Cascade)
 
   @@id([electionId, id])
@@ -65,4 +67,33 @@ model AuditLog {
   details   String
   timestamp DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Block {
+  index        Int           @id
+  timestamp    DateTime      @default(now())
+  prevHash     String
+  hash         String        @unique
+  nonce        Int
+  signature    String        // Signed by authority node
+  transactions Transaction[]
+}
+
+model Transaction {
+  id         String   @id // Transaction hash (sha256 of sender + payload + type + timestamp)
+  blockIndex Int?
+  type       String   // "CREATE_ELECTION" | "ADD_CANDIDATE" | "START_ELECTION" | "END_ELECTION" | "REGISTER_VOTER" | "CAST_VOTE"
+  sender     String
+  payload    String   // JSON string of input parameters
+  signature  String
+  timestamp  DateTime @default(now())
+  block      Block?   @relation(fields: [blockIndex], references: [index], onDelete: Cascade)
+}
+
+model WhitelistedVoter {
+  electionId    Int
+  walletAddress String
+  createdAt     DateTime @default(now())
+
+  @@id([electionId, walletAddress])
 }

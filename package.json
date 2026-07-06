@@ -3,14 +3,11 @@
   "version": "1.0.0",
   "description": "Root scripts for running the Secure Blockchain Voting Platform",
   "scripts": {
-    "start:db": "docker-compose up -d",
-    "stop:db": "docker-compose down",
-    "hardhat:node": "cd blockchain && npx hardhat node",
-    "hardhat:deploy": "cd blockchain && npx hardhat run scripts/deploy.ts --network localhost",
-    "hardhat:test": "cd blockchain && npx hardhat test",
     "backend:dev": "cd backend && npm run dev",
     "backend:seed": "cd backend && npx ts-node prisma/seed.ts",
-    "frontend:dev": "cd frontend && npm run dev",
-    "frontend:build": "cd frontend && npm run build"
+    "voter:dev": "cd voter-frontend && npm run dev",
+    "voter:build": "cd voter-frontend && npm run build",
+    "admin:dev": "cd admin-frontend && npm run dev",
+    "admin:build": "cd admin-frontend && npm run build"
   }
 }

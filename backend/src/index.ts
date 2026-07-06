@@ -6,7 +6,9 @@ import electionRoutes from './routes/electionRoutes';
 import candidateRoutes from './routes/candidateRoutes';
 import voterRoutes from './routes/voterRoutes';
 import voteRoutes from './routes/voteRoutes';
+import blockchainRoutes from './routes/blockchainRoutes';
 import prisma from './config/db';
+import { BlockchainEngine } from './blockchain/blockchain';
 
 dotenv.config();
 
@@ -27,6 +29,7 @@ app.use('/api/elections', electionRoutes);
 app.use('/api/candidates', candidateRoutes);
 app.use('/api/voters', voterRoutes);
 app.use('/api/vote', voteRoutes);
+app.use('/api/blockchain', blockchainRoutes);
 
 // Health Check
 app.get('/health', (req, res) => {
@@ -39,6 +42,9 @@ app.listen(PORT, async () => {
   try {
     await prisma.$connect();
     console.log('Database connected successfully');
+    
+    // Initialize blockchain genesis block if empty
+    await BlockchainEngine.initGenesisBlock();
   } catch (error) {
     console.error('Database connection failed:', error);
   }
