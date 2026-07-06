@@ -20,9 +20,11 @@ jobs:
         with:
           node-version: 18
 
-      - name: Install root dependencies
+      - name: Install dependencies
         run: |
           npm install
+          cd voter-frontend && npm install
+          cd ../admin-frontend && npm install
 
       - name: Configure Environment Variables
         run: |
